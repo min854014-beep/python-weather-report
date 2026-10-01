@@ -154,13 +154,101 @@ def fetch_weather(lat: float, lon: float, days: int = 3) -> Optional[Dict[str, A
         return None
 
 
+def display_weather_forecast(location: str, weather_data: Dict[str, Any]) -> None:
+    """가져온 날씨 예보 데이터를 보기 쉬운 형식으로 터미널에 출력합니다."""
+    hourly = weather_data.get("hourly", {})
+    daily = weather_data.get("daily", {})
+
+    times = hourly.get("time", [])
+    temps = hourly.get("temperature_2m", [])
+    humidities = hourly.get("relative_humidity_2m", [])
+    precip_probs = hourly.get("precipitation_probability", [])
+    codes = hourly.get("weather_code", [])
+    wind_speeds = hourly.get("wind_speed_10m", [])
+
+    daily_times = daily.get("time", [])
+    daily_max = daily.get("temperature_2m_max", [])
+    daily_min = daily.get("temperature_2m_min", [])
+
+    day_labels = ["오늘", "내일", "모레"]
+
+    print("\n" + "=" * 60)
+    print(f"📍 {location} 날씨 예보 (오전 6시 / 오후 3시 기준)")
+    print("=" * 60)
+
+    # 3일간 예보 출력
+    for day_idx in range(min(len(day_labels), len(daily_times))):
+        date_str = daily_times[day_idx]
+        dt = datetime.strptime(date_str, "%Y-%m-%d")
+        formatted_date = dt.strftime("%m.%d.")
+        label = day_labels[day_idx]
+
+        print(f"\n📅 {label} ({formatted_date})")
+        print("-" * 40)
+
+        # 오전 06:00 및 오후 15:00 찾기
+        target_morning = f"{date_str}T06:00"
+        target_afternoon = f"{date_str}T15:00"
+
+        # 오전 06:00 출력
+        if target_morning in times:
+            idx = times.index(target_morning)
+            w_desc = get_weather_desc(codes[idx])
+            t = round(temps[idx])
+            pop = precip_probs[idx]
+            rh = humidities[idx]
+            ws = round(wind_speeds[idx])
+
+            print("🌅 오전 06:00")
+            print(f"  날씨: {w_desc}")
+            print(f"  기온: {t} ℃")
+            print(f"  강수확률: {pop}%")
+            print(f"  습도: {rh}%")
+            print(f"  풍속: {ws} m/s")
+
+        print()
+
+        # 오후 15:00 출력
+        if target_afternoon in times:
+            idx = times.index(target_afternoon)
+            w_desc = get_weather_desc(codes[idx])
+            t = round(temps[idx])
+            pop = precip_probs[idx]
+            rh = humidities[idx]
+            ws = round(wind_speeds[idx])
+
+            print("🌇 오후 15:00")
+            print(f"  날씨: {w_desc}")
+            print(f"  기온: {t} ℃")
+            print(f"  강수확률: {pop}%")
+            print(f"  습도: {rh}%")
+            print(f"  풍속: {ws} m/s")
+
+        # 일일 최저 / 최고 기온 출력
+        d_min = round(daily_min[day_idx])
+        d_max = round(daily_max[day_idx])
+        print(f"\n🌡️ 일일 기온: 최저 {d_min} ℃ / 최고 {d_max} ℃")
+        print("\n" + "=" * 60)
+
+
 if __name__ == "__main__":
-    loc = input("날씨를 확인할 지역을 입력하세요 (기본값: 서울): ").strip() or "서울"
-    coords = get_coordinates(loc)
-    if coords:
-        print(f"📍 {loc} (위도: {coords[0]}, 경도: {coords[1]}) 의 날씨 정보를 가져옵니다...")
-        weather = fetch_weather(coords[0], coords[1])
-        if weather:
-            print(" 날씨 데이터를 성공적으로 수신했습니다.")
+    print("☀️ 날씨 예보 프로그램 (Open-Meteo API)")
+    print("-" * 40)
+    print("오전 6시, 오후 3시 기준으로 3일간 날씨를 제공합니다.\n")
+
+    user_input = input("날씨를 확인할 지역을 입력하세요 (기본값: 서울): ").strip()
+    location = user_input if user_input else "서울"
+
+    coords = get_coordinates(location)
+    if not coords:
+        print(f"❌ '{location}' 지역을 찾을 수 없습니다. 프로그램을 종료합니다.")
+        sys.exit(1)
+
+    lat, lon = coords
+    print(f"📍 {location} (위도: {lat}, 경도: {lon}) 의 날씨 정보를 가져옵니다...")
+
+    weather_data = fetch_weather(lat, lon, days=3)
+    if weather_data:
+        display_weather_forecast(location, weather_data)
     else:
-        print(f"❌ '{loc}' 지역의 좌표를 찾을 수 없습니다.")
+        print("❌ 날씨 정보를 가져오는데 실패했습니다.")
