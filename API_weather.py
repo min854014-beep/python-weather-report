@@ -231,6 +231,23 @@ def display_weather_forecast(location: str, weather_data: Dict[str, Any]) -> Non
         print("\n" + "=" * 60)
 
 
+def save_weather_to_json(location: str, weather_data: Dict[str, Any]) -> str:
+    """조회된 날씨 정보를 weather_{지역}_{YYYYMMDD_HHMMSS}.json 파일로 저장합니다."""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"weather_{location}_{timestamp}.json"
+
+    export_data = {
+        "location": location,
+        "saved_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "raw_weather_data": weather_data,
+    }
+
+    with open(filename, "w", encoding="utf-8") as f:
+        json.dump(export_data, f, ensure_ascii=False, indent=2)
+
+    return filename
+
+
 if __name__ == "__main__":
     print("☀️ 날씨 예보 프로그램 (Open-Meteo API)")
     print("-" * 40)
@@ -250,5 +267,11 @@ if __name__ == "__main__":
     weather_data = fetch_weather(lat, lon, days=3)
     if weather_data:
         display_weather_forecast(location, weather_data)
+
+        # JSON 저장 여부 묻기
+        save_choice = input("\n날씨 정보를 JSON 파일로 저장하시겠습니까? (y/n): ").strip().lower()
+        if save_choice == "y":
+            saved_file = save_weather_to_json(location, weather_data)
+            print(f"💾 날씨 정보가 {saved_file} 파일로 저장되었습니다.")
     else:
         print("❌ 날씨 정보를 가져오는데 실패했습니다.")
