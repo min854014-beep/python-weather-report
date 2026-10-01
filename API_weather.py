@@ -40,6 +40,43 @@ DEFAULT_COORDINATES: Dict[str, Tuple[float, float]] = {
     "강릉": (37.7519, 128.8761),
 }
 
+# WMO 날씨 해석 코드 매핑 (Open-Meteo Weather interpretation codes)
+WEATHER_CODES: Dict[int, str] = {
+    0: "맑음",
+    1: "주로 맑음",
+    2: "구름 많음",
+    3: "흐림",
+    45: "안개",
+    48: "착빙성 안개",
+    51: "약한 이슬비",
+    53: "보통 이슬비",
+    55: "강한 이슬비",
+    56: "약한 어는 이슬비",
+    57: "강한 어는 이슬비",
+    61: "약한 비",
+    63: "보통 비",
+    65: "강한 비",
+    66: "약한 어는 비",
+    67: "강한 어는 비",
+    71: "약한 눈",
+    73: "보통 눈",
+    75: "강한 눈",
+    77: "싸락눈",
+    80: "약한 소나기",
+    81: "보통 소나기",
+    82: "강한 소나기",
+    85: "약한 눈 소나기",
+    86: "강한 눈 소나기",
+    95: "뇌우",
+    96: "약한 우박을 동반한 뇌우",
+    99: "강한 우박을 동반한 뇌우",
+}
+
+
+def get_weather_desc(code: int) -> str:
+    """WMO 날씨 코드를 한글 설명으로 변환합니다."""
+    return WEATHER_CODES.get(code, "맑음")
+
 
 def get_coordinates(location_name: str) -> Optional[Tuple[float, float]]:
     """입력받은 지역명의 위도와 경도를 반환합니다.
@@ -85,10 +122,45 @@ def get_coordinates(location_name: str) -> Optional[Tuple[float, float]]:
         return None
 
 
+def fetch_weather(lat: float, lon: float, days: int = 3) -> Optional[Dict[str, Any]]:
+    """Open-Meteo API를 호출하여 날씨 예보 데이터를 가져옵니다."""
+    url = "https://api.open-meteo.com/v1/forecast"
+    params = {
+        "latitude": lat,
+        "longitude": lon,
+        "hourly": [
+            "temperature_2m",
+            "relative_humidity_2m",
+            "precipitation_probability",
+            "weather_code",
+            "wind_speed_10m",
+        ],
+        "daily": [
+            "weather_code",
+            "temperature_2m_max",
+            "temperature_2m_min",
+        ],
+        "wind_speed_unit": "ms",
+        "timezone": "Asia/Seoul",
+        "forecast_days": days,
+    }
+
+    try:
+        response = requests.get(url, params=params, timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        print(f"날씨 정보를 가져오는 중 오류 발생: {e}")
+        return None
+
+
 if __name__ == "__main__":
     loc = input("날씨를 확인할 지역을 입력하세요 (기본값: 서울): ").strip() or "서울"
     coords = get_coordinates(loc)
     if coords:
         print(f"📍 {loc} (위도: {coords[0]}, 경도: {coords[1]}) 의 날씨 정보를 가져옵니다...")
+        weather = fetch_weather(coords[0], coords[1])
+        if weather:
+            print(" 날씨 데이터를 성공적으로 수신했습니다.")
     else:
         print(f"❌ '{loc}' 지역의 좌표를 찾을 수 없습니다.")
